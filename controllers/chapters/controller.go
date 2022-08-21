@@ -116,6 +116,30 @@ func GetAllChapters() http.HandlerFunc {
 	}
 }
 
+func GetSingleChapter() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		params := mux.Vars(r)
+		chapterId := params["chapterId"]
+		var chapter models.Chapter
+		defer cancel()
+
+		objId, _ := primitive.ObjectIDFromHex(chapterId)
+
+		err := db.ChapterCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&chapter)
+
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			response := responses.BookResponse{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		rw.WriteHeader(http.StatusOK)
+		json.NewEncoder(rw).Encode(chapter)
+	}
+}
+
 func getBookNumbers(bookId primitive.ObjectID) ([]int, error) {
 	var getNumbers []int
 
