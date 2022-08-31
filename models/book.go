@@ -1,10 +1,8 @@
 package models
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
-
 type Book struct {
-	ID       primitive.ObjectID `json:"id,omitempty"`
-	Title    string             `json:"title,omitempty" validate:"required"`
-	Subtitle string             `json:"subtitle,omitempty" validate:"required"`
-	Author   string             `json:"author,omitempty" validate:"required"`
+	Title     string `json:"title,omitempty" validate:"required"`
+	Subtitle  string `json:"subtitle,omitempty" validate:"required"`
+	Author    string `json:"author,omitempty" validate:"required"`
+	BookCover string `json:"bookCover,omitempty" validate:"required"`
 }
