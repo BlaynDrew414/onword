@@ -17,7 +17,7 @@ func main() {
 	configs.ConnectDB()
 
 	//routes
-	routes.UserRoute(router) //add this
+	routes.Routes(router) //add this
 
 	log.Fatal(http.ListenAndServe(":3000", router))
 }

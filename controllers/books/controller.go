@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,7 +33,7 @@ func CreateBook() http.HandlerFunc {
 			return
 		}
 		defer file.Close()
-		tempFile, err := ioutil.TempFile("../static", "upload-*.png")
+		tempFile, err := ioutil.TempFile("../cover-images", "upload-*.png")
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -82,7 +83,64 @@ func GetABook() http.HandlerFunc {
 	}
 }
 
+func CreateChapterHeader() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		r.ParseMultipartForm(10 << 20)
+		file, _, err := r.FormFile("imageLocation")
+		if err != nil {
+			fmt.Println("error while getting the File")
+			fmt.Println(err)
+			return
+		}
+		defer file.Close()
+		tempFile, err := ioutil.TempFile("../chapter-images", "upload-*.png")
+		if err != nil {
+			fmt.Println(err)
+		}
+		defer tempFile.Close()
+		fileBytes, err := ioutil.ReadAll(file)
+		if err != nil {
+			fmt.Println(err)
+		}
+		tempFile.Write(fileBytes)
+
+		newImage := models.ChapterImages{
+			BookID:        stringToPrimitive(r.FormValue("bookID")),
+			ChapterNum:    stringToInt(r.FormValue("chapterNum")),
+			ImageLocation: forwardSlash(tempFile.Name()),
+			Type:          r.FormValue("type"),
+			IsGif:         stringToBool(r.FormValue("isGif")),
+		}
+
+		insertResult, err := db.InsertImage(context.TODO(), newImage)
+		if err != nil {
+			log.Fatal(err)
+		}
+		json.NewEncoder(rw).Encode(insertResult.InsertedID) // return the //mongodb ID of generated document
+	}
+}
+
 func forwardSlash(pathName string) string {
 	replace := strings.ReplaceAll(pathName, `\`, `/`)
 	return replace
+}
+
+func stringToBool(input string) bool {
+	if input == "true" {
+		return true
+	}
+	return false
+}
+
+func stringToInt(input string) int {
+	changed, err := strconv.Atoi(input)
+	if err != nil {
+		return 0
+	}
+	return changed
+}
+
+func stringToPrimitive(input string) primitive.ObjectID {
+	objId, _ := primitive.ObjectIDFromHex(input)
+	return objId
 }
