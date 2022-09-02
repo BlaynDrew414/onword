@@ -3,12 +3,12 @@ package models
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
 type Chapter struct {
-	ID          primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
-	HeaderImage string             `json:"headerImage,omitempty" bson:"headerImage,omitempty"`
-	ChapterNum  int                `json:"chapterNum,omitempty" bson:"chapterNum,omitempty"`
-	Title       string             `json:"title,omitempty" validate:"required"`
-	Text        string             `json:"text,omitempty"`
-	BookID      primitive.ObjectID `json:"bookID,omitempty" bson:"bookID,omitempty"`
+	ID            primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
+	ImageLocation string             `json:"imageLocation,omitempty" bson:"imageLocation,omitempty"`
+	ChapterNum    int                `json:"chapterNum,omitempty" bson:"chapterNum,omitempty"`
+	Title         string             `json:"title,omitempty" validate:"required"`
+	Text          string             `json:"text,omitempty"`
+	BookID        primitive.ObjectID `json:"bookID,omitempty" bson:"bookID,omitempty"`
 }
 
 type Chapters struct {
@@ -21,5 +21,4 @@ type ChapterImages struct {
 	ChapterNum    int                `json:"chapterNum,omitempty" bson:"chapterNum,omitempty"`
 	ImageLocation string             `json:"imageLocation,omitempty" bson:"imageLocation,omitempty"`
 	Type          string             `json:"type,omitempty" bson:"type,omitempty"`
-	IsGif         bool               `json:"isGif" bson:"isGif"`
 }
