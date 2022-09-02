@@ -104,32 +104,56 @@ func CreateChapterHeader() http.HandlerFunc {
 		}
 		tempFile.Write(fileBytes)
 
+		pass := r.FormValue("bookID")
+
 		newImage := models.ChapterImages{
 			BookID:        stringToPrimitive(r.FormValue("bookID")),
 			ChapterNum:    stringToInt(r.FormValue("chapterNum")),
 			ImageLocation: forwardSlash(tempFile.Name()),
 			Type:          r.FormValue("type"),
-			IsGif:         stringToBool(r.FormValue("isGif")),
 		}
 
 		insertResult, err := db.InsertImage(context.TODO(), newImage)
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		err = db.UpdateChapterWithHeaderImage(newImage.ImageLocation, pass, newImage.ChapterNum)
+		if err != nil {
+			fmt.Println(err)
+		}
 		json.NewEncoder(rw).Encode(insertResult.InsertedID) // return the //mongodb ID of generated document
+	}
+}
+
+func GetChapterHeader() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		params := mux.Vars(r)
+		bookId := params["bookId"]
+		chNum := params["chNum"]
+		var imageLoc models.ChapterImages
+		defer cancel()
+		objId, _ := primitive.ObjectIDFromHex(bookId)
+		chapterNum, _ := strconv.Atoi(chNum)
+
+		err := db.ImageCollection.FindOne(ctx, bson.M{"bookID": objId, "chapterNum": chapterNum}).Decode(&imageLoc)
+
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			response := responses.BookResponse{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		rw.WriteHeader(http.StatusOK)
+		json.NewEncoder(rw).Encode(imageLoc)
 	}
 }
 
 func forwardSlash(pathName string) string {
 	replace := strings.ReplaceAll(pathName, `\`, `/`)
 	return replace
-}
-
-func stringToBool(input string) bool {
-	if input == "true" {
-		return true
-	}
-	return false
 }
 
 func stringToInt(input string) int {

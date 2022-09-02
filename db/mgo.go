@@ -2,9 +2,12 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/programmingbunny/epub-backend/configs"
 	"github.com/programmingbunny/epub-backend/models"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -37,4 +40,24 @@ func InsertImage(ctx context.Context, newImage models.ChapterImages) (result *mo
 		return nil, err
 	}
 	return result, nil
+}
+
+func UpdateChapterWithHeaderImage(imageLoc string, book string, chNum int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	objId, _ := primitive.ObjectIDFromHex(book)
+
+	_, err := ChapterCollection.UpdateOne(
+		ctx,
+		bson.M{"bookID": objId, "chapterNum": chNum},
+		bson.M{
+			"$set": bson.M{
+				"imageLocation": imageLoc}},
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
