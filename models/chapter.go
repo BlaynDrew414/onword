@@ -9,6 +9,7 @@ type Chapter struct {
 	Title         string             `json:"title,omitempty" validate:"required"`
 	Text          string             `json:"text,omitempty"`
 	BookID        primitive.ObjectID `json:"bookID,omitempty" bson:"bookID,omitempty"`
+	VersionID     primitive.ObjectID `json:"versionID,omitempty" bson:"versionID,omitempty"`
 }
 
 type Chapters struct {

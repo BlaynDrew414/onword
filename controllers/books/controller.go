@@ -33,11 +33,13 @@ func CreateBook() http.HandlerFunc {
 			return
 		}
 		defer file.Close()
-		tempFile, err := ioutil.TempFile("../cover-images", "upload-*.png")
+
+		tempFile, err := ioutil.TempFile("cover-images", "upload-*.png")
 		if err != nil {
 			fmt.Println(err)
 		}
 		defer tempFile.Close()
+
 		fileBytes, err := ioutil.ReadAll(file)
 		if err != nil {
 			fmt.Println(err)
@@ -53,7 +55,8 @@ func CreateBook() http.HandlerFunc {
 
 		insertResult, err := db.InsertBook(context.TODO(), book)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println(err)
+			return
 		}
 		json.NewEncoder(rw).Encode(insertResult.InsertedID) // return the //mongodb ID of generated document
 	}
