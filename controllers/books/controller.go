@@ -76,7 +76,7 @@ func GetABook() http.HandlerFunc {
 
 		if err != nil {
 			rw.WriteHeader(http.StatusInternalServerError)
-			response := responses.BookResponse{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
 			json.NewEncoder(rw).Encode(response)
 			return
 		}
@@ -144,7 +144,7 @@ func GetChapterHeader() http.HandlerFunc {
 
 		if err != nil {
 			rw.WriteHeader(http.StatusInternalServerError)
-			response := responses.BookResponse{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
 			json.NewEncoder(rw).Encode(response)
 			return
 		}
