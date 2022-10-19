@@ -18,6 +18,10 @@ var ChapterCollection *mongo.Collection = configs.GetCollection(configs.DB, "Cha
 
 var ImageCollection *mongo.Collection = configs.GetCollection(configs.DB, "Images")
 
+var VersionCollection *mongo.Collection = configs.GetCollection(configs.DB, "Versions")
+
+var NoteCollection *mongo.Collection = configs.GetCollection(configs.DB, "Notes")
+
 func InsertBook(ctx context.Context, newBook models.Book) (result *mongo.InsertOneResult, err error) {
 	result, err = BookCollection.InsertOne(ctx, newBook)
 	if err != nil {
@@ -36,6 +40,22 @@ func InsertChapter(ctx context.Context, newChapter models.Chapter) (result *mong
 
 func InsertImage(ctx context.Context, newImage models.ChapterImages) (result *mongo.InsertOneResult, err error) {
 	result, err = ImageCollection.InsertOne(ctx, newImage)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func InsertVersion(ctx context.Context, newVersion models.Version) (result *mongo.InsertOneResult, err error) {
+	result, err = VersionCollection.InsertOne(ctx, newVersion)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func InsertNotes(ctx context.Context, newNote models.Notes) (result *mongo.InsertOneResult, err error) {
+	result, err = NoteCollection.InsertOne(ctx, newNote)
 	if err != nil {
 		return nil, err
 	}
