@@ -4,6 +4,7 @@ import (
 	"github.com/gorilla/mux"
 	books "github.com/programmingbunny/epub-backend/controllers/books"
 	chapters "github.com/programmingbunny/epub-backend/controllers/chapters"
+	"github.com/programmingbunny/epub-backend/controllers/notes"
 )
 
 func Routes(router *mux.Router) {
@@ -16,4 +17,8 @@ func Routes(router *mux.Router) {
 
 	router.HandleFunc("/getChapterImage/{bookId}/{chNum}", books.GetChapterHeader()).Methods("GET")
 	router.HandleFunc("/createChapterImage", books.CreateChapterHeader()).Methods("POST")
+
+	router.HandleFunc("/getNotes", notes.GetAllNotes()).Methods("GET")
+	router.HandleFunc("/getNotes/{noteId}", notes.GetNotes()).Methods("GET")
+	router.HandleFunc("/createNotes", notes.CreateNotes()).Methods("POST")
 }
