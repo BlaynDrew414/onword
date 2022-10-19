@@ -27,7 +27,7 @@ func CreateChapter() http.HandlerFunc {
 		//validate the request body
 		if err := json.NewDecoder(r.Body).Decode(&chapter); err != nil {
 			rw.WriteHeader(http.StatusBadRequest)
-			response := responses.BookResponse{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			response := responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
 			json.NewEncoder(rw).Encode(response)
 			return
 		}
@@ -35,7 +35,7 @@ func CreateChapter() http.HandlerFunc {
 		//use the validator library to validate required fields
 		if validationErr := validate.Struct(&chapter); validationErr != nil {
 			rw.WriteHeader(http.StatusBadRequest)
-			response := responses.BookResponse{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": validationErr.Error()}}
+			response := responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": validationErr.Error()}}
 			json.NewEncoder(rw).Encode(response)
 			return
 		}
@@ -45,6 +45,7 @@ func CreateChapter() http.HandlerFunc {
 			ChapterNum: chapter.ChapterNum,
 			Text:       chapter.Text,
 			BookID:     chapter.BookID,
+			VersionID:  chapter.VersionID,
 		}
 
 		nums, err := getBookNumbers(newChapter.BookID)
@@ -62,13 +63,13 @@ func CreateChapter() http.HandlerFunc {
 		result, err := db.InsertChapter(ctx, newChapter)
 		if err != nil {
 			rw.WriteHeader(http.StatusInternalServerError)
-			response := responses.BookResponse{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
 			json.NewEncoder(rw).Encode(response)
 			return
 		}
 
 		rw.WriteHeader(http.StatusCreated)
-		response := responses.BookResponse{Status: http.StatusCreated, Message: "success", Data: map[string]interface{}{"data": result}}
+		response := responses.Response{Status: http.StatusCreated, Message: "success", Data: map[string]interface{}{"data": result}}
 		json.NewEncoder(rw).Encode(response)
 	}
 }
@@ -87,7 +88,7 @@ func GetAllChapters() http.HandlerFunc {
 
 		if err != nil {
 			rw.WriteHeader(http.StatusInternalServerError)
-			response := responses.BookResponse{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
 			json.NewEncoder(rw).Encode(response)
 			return
 		}
@@ -98,7 +99,7 @@ func GetAllChapters() http.HandlerFunc {
 			var singleChapter models.Chapter
 			if err = results.Decode(&singleChapter); err != nil {
 				rw.WriteHeader(http.StatusInternalServerError)
-				response := responses.BookResponse{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+				response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
 				json.NewEncoder(rw).Encode(response)
 			}
 
@@ -130,7 +131,7 @@ func GetSingleChapter() http.HandlerFunc {
 
 		if err != nil {
 			rw.WriteHeader(http.StatusInternalServerError)
-			response := responses.BookResponse{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
 			json.NewEncoder(rw).Encode(response)
 			return
 		}
