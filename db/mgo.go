@@ -62,6 +62,25 @@ func InsertNotes(ctx context.Context, newNote models.Notes) (result *mongo.Inser
 	return result, nil
 }
 
+func UpdateNote(ctx context.Context, id primitive.ObjectID, updatedNote models.Notes) (*mongo.UpdateResult, error) {
+	filter := bson.M{"_id": id}
+	update := bson.M{"$set": bson.M{
+		"title":     updatedNote.Title,
+		"text":      updatedNote.Text,
+		"type":      updatedNote.Type,
+		"bookID":    updatedNote.BookID,
+		"versionID": updatedNote.VersionID,
+	}}
+
+	result, err := NoteCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+
 func UpdateChapterWithHeaderImage(imageLoc string, book string, chNum int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

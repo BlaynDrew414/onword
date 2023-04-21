@@ -121,3 +121,60 @@ func GetAllNotes() http.HandlerFunc {
 		json.NewEncoder(rw).Encode(notes)
 	}
 }
+
+func EditNotes() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		params := mux.Vars(r)
+		noteId := params["noteId"]
+		var existingNote models.Notes
+		defer cancel()
+
+		objId, _ := primitive.ObjectIDFromHex(noteId)
+
+		err := db.NoteCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&existingNote)
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		var updatedNote models.Notes
+		if err := json.NewDecoder(r.Body).Decode(&updatedNote); err != nil {
+			rw.WriteHeader(http.StatusBadRequest)
+			response := responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		// update existing note fields with new data from request body
+		existingNote.Title = updatedNote.Title
+		existingNote.Text = updatedNote.Text
+		existingNote.Type = updatedNote.Type
+		existingNote.BookID = updatedNote.BookID
+		existingNote.VersionID = updatedNote.VersionID
+
+		// validate the updated note
+		if validationErr := validate.Struct(&existingNote); validationErr != nil {
+			rw.WriteHeader(http.StatusBadRequest)
+			response := responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": validationErr.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		// update the note in the database
+		result, err := db.UpdateNote(ctx, objId, existingNote)
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		rw.WriteHeader(http.StatusOK)
+		response := responses.Response{Status: http.StatusOK, Message: "success", Data: map[string]interface{}{"data": result}}
+		json.NewEncoder(rw).Encode(response)
+	}
+}
+
