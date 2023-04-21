@@ -62,7 +62,7 @@ func InsertNotes(ctx context.Context, newNote models.Notes) (result *mongo.Inser
 	return result, nil
 }
 
-func UpdateNote(ctx context.Context, id primitive.ObjectID, updatedNote models.Notes) (*mongo.UpdateResult, error) {
+func UpdateNoteByID(ctx context.Context, id primitive.ObjectID, updatedNote models.Notes) (*mongo.UpdateResult, error) {
 	filter := bson.M{"_id": id}
 	update := bson.M{"$set": bson.M{
 		"title":     updatedNote.Title,
