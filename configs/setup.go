@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -30,11 +31,15 @@ func ConnectDB() *mongo.Client {
 	return client
 }
 
+func EnvMongoURI() string {
+	return os.Getenv("MONGODB_URI")
+}
+
 //Client instance
 var DB *mongo.Client = ConnectDB()
 
 //getting database collections
 func GetCollection(client *mongo.Client, collectionName string) *mongo.Collection {
-	collection := client.Database("Publishing").Collection(collectionName)
+	collection := DB.Database("Publishing").Collection(collectionName)
 	return collection
 }

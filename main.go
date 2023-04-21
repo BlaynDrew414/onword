@@ -1,6 +1,7 @@
 package main
 
 import (
+	
 	"log"
 	"net/http"
 
@@ -13,11 +14,11 @@ import (
 func main() {
 	router := mux.NewRouter()
 
-	//run database
-	configs.ConnectDB()
+	client := configs.DB
 
 	//routes
-	routes.Routes(router) //add this
+	routes.Routes(router, client) 
 
+	log.Println("Hello, This is OnWord!")
 	log.Fatal(http.ListenAndServe(":3000", router))
 }

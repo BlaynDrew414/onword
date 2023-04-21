@@ -5,9 +5,10 @@ import (
 	books "github.com/programmingbunny/epub-backend/controllers/books"
 	chapters "github.com/programmingbunny/epub-backend/controllers/chapters"
 	"github.com/programmingbunny/epub-backend/controllers/notes"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func Routes(router *mux.Router) {
+func Routes(router *mux.Router, client *mongo.Client) {
 	router.HandleFunc("/createBook", books.CreateBook()).Methods("POST")
 	router.HandleFunc("/book/{bookId}", books.GetABook()).Methods("GET")
 
