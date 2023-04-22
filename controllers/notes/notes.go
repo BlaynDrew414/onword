@@ -175,11 +175,11 @@ func DeleteNote() http.HandlerFunc {
 
 		// Get the note ID from the request parameters
 		params := mux.Vars(r)
-		noteID := params["noteId"]
-		log.Printf("Note ID: %s\n", noteID)
+		noteId := params["noteId"]
+		log.Printf("Note ID: %s\n", noteId)
 
 		// Convert the note ID to an ObjectID
-		objID, err := primitive.ObjectIDFromHex(noteID)
+		objID, err := primitive.ObjectIDFromHex(noteId)
 		if err != nil {
 			log.Printf("Error converting note ID to ObjectID: %s\n", err)
 			rw.WriteHeader(http.StatusBadRequest)
