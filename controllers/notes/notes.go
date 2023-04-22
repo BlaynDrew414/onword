@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -15,10 +16,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
-
-// update note
-
-// delete note
 
 var validate = validator.New()
 
@@ -137,7 +134,7 @@ func UpdateNote() http.HandlerFunc {
 			rw.WriteHeader(http.StatusInternalServerError)
 			response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
 			json.NewEncoder(rw).Encode(response)
-			return 
+			return
 		}
 
 		// Update the existing note
@@ -159,7 +156,7 @@ func UpdateNote() http.HandlerFunc {
 			rw.WriteHeader(http.StatusInternalServerError)
 			response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
 			json.NewEncoder(rw).Encode(response)
-			return 
+			return
 		}
 
 		// Send a success response back to the client
@@ -169,3 +166,49 @@ func UpdateNote() http.HandlerFunc {
 	}
 }
 
+// Delete a single note
+func DeleteNote() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		// Create a context with a timeout of 10 seconds
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		// Get the note ID from the request parameters
+		params := mux.Vars(r)
+		noteID := params["noteId"]
+		log.Printf("Note ID: %s\n", noteID)
+
+		// Convert the note ID to an ObjectID
+		objID, err := primitive.ObjectIDFromHex(noteID)
+		if err != nil {
+			log.Printf("Error converting note ID to ObjectID: %s\n", err)
+			rw.WriteHeader(http.StatusBadRequest)
+			response := responses.Response{Status: http.StatusBadRequest, Message: "Invalid note ID", Data: nil}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		// Delete the note from the database
+		result, err := db.DeleteNoteByID(ctx, objID)
+		if err != nil {
+			log.Printf("Error deleting note: %s\n", err)
+			rw.WriteHeader(http.StatusInternalServerError)
+			response := responses.Response{Status: http.StatusInternalServerError, Message: "Error deleting note", Data: nil}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		// Check if the note was deleted
+		if result.DeletedCount == 0 {
+			rw.WriteHeader(http.StatusNotFound)
+			response := responses.Response{Status: http.StatusNotFound, Message: "Note not found", Data: nil}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		// Return a success response
+		rw.WriteHeader(http.StatusOK)
+		response := responses.Response{Status: http.StatusOK, Message: "Note deleted", Data: nil}
+		json.NewEncoder(rw).Encode(response)
+	}
+}

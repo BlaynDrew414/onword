@@ -12,21 +12,31 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var BookCollection *mongo.Collection = configs.GetCollection(configs.DB, "BookDetails")
+var BookCollection *mongo.Collection = configs.GetCollection(configs.DB, "OnWord", "BookDetails")
 
-var ChapterCollection *mongo.Collection = configs.GetCollection(configs.DB, "Chapters")
+var ChapterCollection *mongo.Collection = configs.GetCollection(configs.DB, "OnWord", "Chapters")
 
-var ImageCollection *mongo.Collection = configs.GetCollection(configs.DB, "Images")
+var ImageCollection *mongo.Collection = configs.GetCollection(configs.DB, "OnWord", "Images")
 
-var VersionCollection *mongo.Collection = configs.GetCollection(configs.DB, "Versions")
+var VersionCollection *mongo.Collection = configs.GetCollection(configs.DB, "OnWord", "Versions")
 
-var NoteCollection *mongo.Collection = configs.GetCollection(configs.DB, "Notes")
+var NoteCollection *mongo.Collection = configs.GetCollection(configs.DB, "OnWord", "Notes")
 
 func InsertBook(ctx context.Context, newBook models.Book) (result *mongo.InsertOneResult, err error) {
 	result, err = BookCollection.InsertOne(ctx, newBook)
 	if err != nil {
 		return nil, err
 	}
+	return result, nil
+}
+
+func DeleteNoteByID(ctx context.Context, id primitive.ObjectID) (*mongo.DeleteResult, error) {
+	// Delete the note from the database
+	result, err := NoteCollection.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		return nil, err
+	}
+
 	return result, nil
 }
 
@@ -79,6 +89,7 @@ func UpdateNoteByID(ctx context.Context, id primitive.ObjectID, updatedNote mode
 
 	return result, nil
 }
+
 
 
 func UpdateChapterWithHeaderImage(imageLoc string, book string, chNum int) error {

@@ -23,5 +23,6 @@ func Routes(router *mux.Router, client *mongo.Client) {
 	router.HandleFunc("/getNotes/{noteId}", notes.GetNotes()).Methods("GET")
 	router.HandleFunc("/createNotes", notes.CreateNotes()).Methods("POST")
 	router.HandleFunc("/updateNotes/{noteId}", notes.UpdateNote()).Methods("PUT")
+	router.HandleFunc("/deleteNotes/{noteId}", notes.DeleteNote()).Methods("DELETE")
 	
 }

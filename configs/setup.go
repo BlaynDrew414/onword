@@ -39,7 +39,7 @@ func EnvMongoURI() string {
 var DB *mongo.Client = ConnectDB()
 
 //getting database collections
-func GetCollection(client *mongo.Client, collectionName string) *mongo.Collection {
-	collection := DB.Database("Publishing").Collection(collectionName)
-	return collection
+func GetCollection(client *mongo.Client, dbName, collectionName string) *mongo.Collection {
+    collection := client.Database(dbName).Collection(collectionName)
+    return collection
 }
