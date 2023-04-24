@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
+	"go.mongodb.org/mongo-driver/mongo"
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 	"github.com/programmingbunny/epub-backend/db"
 	"github.com/programmingbunny/epub-backend/models"
 	"github.com/programmingbunny/epub-backend/responses"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -107,9 +108,7 @@ func GetAllChapters() http.HandlerFunc {
 		}
 
 		var everyChapter models.Chapters
-		for i := range chapters {
-			everyChapter.Chapters = append(everyChapter.Chapters, chapters[i])
-		}
+		everyChapter.Chapters = append(everyChapter.Chapters, chapters...)
 		everyChapter.BookID = objId
 
 		rw.WriteHeader(http.StatusOK)
@@ -141,6 +140,24 @@ func GetSingleChapter() http.HandlerFunc {
 	}
 }
 
+func UpdateChapterTitle(ctx context.Context, bookId string, chapterNum int, newTitle string) (*mongo.UpdateResult, error) {
+    objId, err := primitive.ObjectIDFromHex(bookId)
+    if err != nil {
+        return nil, err
+    }
+
+    filter := bson.M{"bookID": objId, "chapterNum": chapterNum}
+    update := bson.M{"$set": bson.M{"title": newTitle}}
+
+    result, err := db.ChapterCollection.UpdateOne(ctx, filter, update)
+    if err != nil {
+        return nil, err
+    }
+
+    return result, nil
+}
+
+
 func getBookNumbers(bookId primitive.ObjectID) ([]int, error) {
 	var getNumbers []int
 
@@ -161,4 +178,41 @@ func getBookNumbers(bookId primitive.ObjectID) ([]int, error) {
 	results.Close(context.TODO())
 
 	return getNumbers, nil
+}
+
+func DeleteChapter() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		params := mux.Vars(r)
+		chapterId := params["chapterId"]
+
+		objId, err := primitive.ObjectIDFromHex(chapterId)
+		if err != nil {
+			rw.WriteHeader(http.StatusBadRequest)
+			response := responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		result, err := db.DeleteChapterByID(ctx, objId)
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		if result.DeletedCount == 0 {
+			rw.WriteHeader(http.StatusNotFound)
+			response := responses.Response{Status: http.StatusNotFound, Message: "error", Data: map[string]interface{}{"data": "chapter not found"}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		rw.WriteHeader(http.StatusOK)
+		response := responses.Response{Status: http.StatusOK, Message: "success", Data: map[string]interface{}{"data": "chapter deleted successfully"}}
+		json.NewEncoder(rw).Encode(response)
+	}
 }

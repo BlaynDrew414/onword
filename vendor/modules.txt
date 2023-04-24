@@ -11,8 +11,6 @@ github.com/golang/snappy
 # github.com/gorilla/mux v1.8.0
 ## explicit
 github.com/gorilla/mux
-# github.com/joho/godotenv v1.5.1
-## explicit
 # github.com/klauspost/compress v1.13.6
 github.com/klauspost/compress
 github.com/klauspost/compress/fse
@@ -25,6 +23,7 @@ github.com/leodido/go-urn
 # github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe
 github.com/montanaflynn/stats
 # github.com/pkg/errors v0.9.1
+## explicit
 github.com/pkg/errors
 # github.com/xdg-go/pbkdf2 v1.0.0
 github.com/xdg-go/pbkdf2

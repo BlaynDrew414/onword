@@ -86,6 +86,53 @@ func GetABook() http.HandlerFunc {
 	}
 }
 
+func DeleteBook() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Parse the book ID from the request URL
+		bookID, err := primitive.ObjectIDFromHex(r.URL.Query().Get("id"))
+		if err != nil {
+			http.Error(w, "Invalid book ID", http.StatusBadRequest)
+			return
+		}
+
+		// Delete all notes associated with the book
+		notesFilter := bson.M{"bookID": bookID}
+		notesResult, err := db.NoteCollection.DeleteMany(context.Background(), notesFilter)
+		if err != nil {
+			http.Error(w, "Failed to delete notes", http.StatusInternalServerError)
+			return
+		}
+		fmt.Printf("Deleted %v notes\n", notesResult.DeletedCount)
+
+		// Delete all chapters associated with the book
+		chaptersFilter := bson.M{"bookID": bookID}
+		chaptersResult, err := db.ChapterCollection.DeleteMany(context.Background(), chaptersFilter)
+		if err != nil {
+			http.Error(w, "Failed to delete chapters", http.StatusInternalServerError)
+			return
+		}
+		fmt.Printf("Deleted %v chapters\n", chaptersResult.DeletedCount)
+
+		// Update all chapters with header images associated with the book
+		headerImageErr := db.UpdateChapterWithHeaderImage("", bookID.Hex(), -1)
+		if headerImageErr != nil {
+			http.Error(w, "Failed to update chapter header images", http.StatusInternalServerError)
+			return
+		}
+
+		// Delete the book itself
+		bookFilter := bson.M{"_id": bookID}
+		bookResult, err := db.BookCollection.DeleteOne(context.Background(), bookFilter)
+		if err != nil {
+			http.Error(w, "Failed to delete book", http.StatusInternalServerError)
+			return
+		}
+
+		// Return the number of items deleted
+		fmt.Fprintf(w, "Deleted %v book, %v chapters, and %v notes", bookResult.DeletedCount, chaptersResult.DeletedCount, notesResult.DeletedCount)
+	}
+}
+
 func CreateChapterHeader() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		r.ParseMultipartForm(10 << 20)

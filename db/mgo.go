@@ -30,6 +30,40 @@ func InsertBook(ctx context.Context, newBook models.Book) (result *mongo.InsertO
 	return result, nil
 }
 
+func DeleteBookByID(ctx context.Context, id primitive.ObjectID) error {
+	// Delete the book from the BookDetails collection
+	_, err := BookCollection.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		return err
+	}
+
+	// Delete all chapters associated with the book ID
+	_, err = ChapterCollection.DeleteMany(ctx, bson.M{"bookID": id})
+	if err != nil {
+		return err
+	}
+
+	// Delete all images associated with the book ID
+	_, err = ImageCollection.DeleteMany(ctx, bson.M{"bookID": id})
+	if err != nil {
+		return err
+	}
+
+	// Delete all versions associated with the book ID
+	_, err = VersionCollection.DeleteMany(ctx, bson.M{"bookID": id})
+	if err != nil {
+		return err
+	}
+
+	// Delete all notes associated with the book ID
+	_, err = NoteCollection.DeleteMany(ctx, bson.M{"bookID": id})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func DeleteNoteByID(ctx context.Context, id primitive.ObjectID) (*mongo.DeleteResult, error) {
 	// Delete the note from the database
 	result, err := NoteCollection.DeleteOne(ctx, bson.M{"_id": id})
@@ -45,6 +79,30 @@ func InsertChapter(ctx context.Context, newChapter models.Chapter) (result *mong
 	if err != nil {
 		return nil, err
 	}
+	return result, nil
+}
+
+func DeleteChapterByID(ctx context.Context, chapterID primitive.ObjectID) (*mongo.DeleteResult, error) {
+    // Delete the chapter from the database
+    result, err := ChapterCollection.DeleteOne(ctx, bson.M{"_id": chapterID})
+    if err != nil {
+        return nil, err
+    }
+
+    return result, nil
+}
+
+func UpdateChapterTitleByID(ctx context.Context, bookID primitive.ObjectID, chNum int, title string) (*mongo.UpdateResult, error) {
+	filter := bson.M{"bookId": bookID, "chNum": chNum}
+	update := bson.M{"$set": bson.M{
+		"title": title,
+	}}
+
+	result, err := ChapterCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return nil, err
+	}
+
 	return result, nil
 }
 
