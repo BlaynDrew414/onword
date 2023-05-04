@@ -6,11 +6,15 @@ import (
 
 	"github.com/programmingbunny/epub-backend/configs"
 	"github.com/programmingbunny/epub-backend/models"
+	"golang.org/x/crypto/bcrypt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
+
+
+var UserCollection *mongo.Collection = configs.GetCollection(configs.DB, "OnWord", "UserDetails")
 
 var BookCollection *mongo.Collection = configs.GetCollection(configs.DB, "OnWord", "BookDetails")
 
@@ -21,6 +25,35 @@ var ImageCollection *mongo.Collection = configs.GetCollection(configs.DB, "OnWor
 var VersionCollection *mongo.Collection = configs.GetCollection(configs.DB, "OnWord", "Versions")
 
 var NoteCollection *mongo.Collection = configs.GetCollection(configs.DB, "OnWord", "Notes")
+
+// HashPassword hashes the given password using bcrypt
+func HashPassword(password string) (string, error) {
+    passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+    if err != nil {
+        return "", err
+    }
+    return string(passwordHash), nil
+}
+
+// InsertUser inserts the given user into the UserCollection
+func InsertUser(ctx context.Context, newUser models.User) error {
+   
+
+    _, err := UserCollection.InsertOne(ctx, newUser)
+    if err != nil {
+        return err
+    }
+    return nil
+}
+
+// DeleteUserByID deletes a user by their ID from the UserCollection
+func DeleteUserByID(ctx context.Context, id primitive.ObjectID) error {
+	_, err := UserCollection.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 func InsertBook(ctx context.Context, newBook models.Book) (result *mongo.InsertOneResult, err error) {
 	result, err = BookCollection.InsertOne(ctx, newBook)

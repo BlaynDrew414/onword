@@ -6,9 +6,16 @@ import (
 	chapters "github.com/programmingbunny/epub-backend/controllers/chapters"
 	"github.com/programmingbunny/epub-backend/controllers/notes"
 	"go.mongodb.org/mongo-driver/mongo"
+	
 )
 
 func Routes(router *mux.Router, client *mongo.Client) {
+	router.HandleFunc("/createUser", users.CreateUser(client)).Methods("POST")
+	router.HandleFunc("/getUser/{userId}", users.GetUser(client)).Methods("GET")
+	router.HandleFunc("/deleteUser/{userId}", users.DeleteUser(client)).Methods("DELETE")
+	router.HandleFunc("/updateUser/{userId}", users.UpdateUser(client)).Methods("PUT")
+
+
 	router.HandleFunc("/createBook", books.CreateBook()).Methods("POST")
 	router.HandleFunc("/book/{bookId}", books.GetABook()).Methods("GET")
 	router.HandleFunc("/deleteBook/{bookId}", books.DeleteBook()).Methods("Delete")
