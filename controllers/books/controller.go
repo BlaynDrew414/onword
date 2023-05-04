@@ -24,43 +24,56 @@ import (
 var validate = validator.New()
 
 func CreateBook() http.HandlerFunc {
-	return func(rw http.ResponseWriter, r *http.Request) {
-		r.ParseMultipartForm(10 << 20)
-		file, _, err := r.FormFile("bookPic")
-		if err != nil {
-			fmt.Println("error while getting the File")
-			fmt.Println(err)
-			return
-		}
-		defer file.Close()
+    return func(rw http.ResponseWriter, r *http.Request) {
+        r.ParseMultipartForm(10 << 20)
 
-		tempFile, err := ioutil.TempFile("cover-images", "upload-*.png")
-		if err != nil {
-			fmt.Println(err)
-		}
-		defer tempFile.Close()
+        var book models.Book
+        err := json.NewDecoder(r.Body).Decode(&book)
+        if err != nil {
+            fmt.Println("Error decoding request body:", err)
+            rw.WriteHeader(http.StatusBadRequest)
+            json.NewEncoder(rw).Encode(map[string]string{"error": "Invalid request body"})
+            return
+        }
 
-		fileBytes, err := ioutil.ReadAll(file)
-		if err != nil {
-			fmt.Println(err)
-		}
-		tempFile.Write(fileBytes)
+        if file, _, err := r.FormFile("bookPic"); err == nil {
+            defer file.Close()
 
-		book := models.Book{
-			Title:     r.FormValue("title"),
-			Subtitle:  r.FormValue("subtitle"),
-			Author:    r.FormValue("author"),
-			BookCover: forwardSlash(tempFile.Name()),
-		}
+            tempFile, err := ioutil.TempFile("cover-images", "upload-*.png")
+            if err != nil {
+                fmt.Println(err)
+            }
+            defer tempFile.Close()
 
-		insertResult, err := db.InsertBook(context.TODO(), book)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		json.NewEncoder(rw).Encode(insertResult.InsertedID) // return the //mongodb ID of generated document
-	}
+            fileBytes, err := ioutil.ReadAll(file)
+            if err != nil {
+                fmt.Println(err)
+            }
+            tempFile.Write(fileBytes)
+
+            book.BookCover = forwardSlash(tempFile.Name())
+        }
+
+        err = validate.Struct(book)
+        if err != nil {
+            fmt.Println("Validation error:", err)
+            rw.WriteHeader(http.StatusBadRequest)
+            json.NewEncoder(rw).Encode(map[string]string{"error": err.Error()})
+            return
+        }
+
+        insertResult, err := db.InsertBook(context.Background(), book)
+        if err != nil {
+            fmt.Println(err)
+            return
+        }
+
+        json.NewEncoder(rw).Encode(insertResult.InsertedID) // return the //mongodb ID of generated document
+    }
 }
+
+
+
 
 func GetABook() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
@@ -88,15 +101,16 @@ func GetABook() http.HandlerFunc {
 
 func DeleteBook() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Parse the book ID from the request URL
-		bookID, err := primitive.ObjectIDFromHex(r.URL.Query().Get("id"))
+		// Extract the book ID from the URL path
+		bookID := mux.Vars(r)["bookId"]
+		objectID, err := primitive.ObjectIDFromHex(bookID)
 		if err != nil {
 			http.Error(w, "Invalid book ID", http.StatusBadRequest)
 			return
 		}
 
 		// Delete all notes associated with the book
-		notesFilter := bson.M{"bookID": bookID}
+		notesFilter := bson.M{"bookID": objectID}
 		notesResult, err := db.NoteCollection.DeleteMany(context.Background(), notesFilter)
 		if err != nil {
 			http.Error(w, "Failed to delete notes", http.StatusInternalServerError)
@@ -105,7 +119,7 @@ func DeleteBook() http.HandlerFunc {
 		fmt.Printf("Deleted %v notes\n", notesResult.DeletedCount)
 
 		// Delete all chapters associated with the book
-		chaptersFilter := bson.M{"bookID": bookID}
+		chaptersFilter := bson.M{"bookID": objectID}
 		chaptersResult, err := db.ChapterCollection.DeleteMany(context.Background(), chaptersFilter)
 		if err != nil {
 			http.Error(w, "Failed to delete chapters", http.StatusInternalServerError)
@@ -114,14 +128,14 @@ func DeleteBook() http.HandlerFunc {
 		fmt.Printf("Deleted %v chapters\n", chaptersResult.DeletedCount)
 
 		// Update all chapters with header images associated with the book
-		headerImageErr := db.UpdateChapterWithHeaderImage("", bookID.Hex(), -1)
+		headerImageErr := db.UpdateChapterWithHeaderImage("", objectID.Hex(), -1)
 		if headerImageErr != nil {
 			http.Error(w, "Failed to update chapter header images", http.StatusInternalServerError)
 			return
 		}
 
 		// Delete the book itself
-		bookFilter := bson.M{"_id": bookID}
+		bookFilter := bson.M{"_id": objectID}
 		bookResult, err := db.BookCollection.DeleteOne(context.Background(), bookFilter)
 		if err != nil {
 			http.Error(w, "Failed to delete book", http.StatusInternalServerError)
@@ -132,6 +146,7 @@ func DeleteBook() http.HandlerFunc {
 		fmt.Fprintf(w, "Deleted %v book, %v chapters, and %v notes", bookResult.DeletedCount, chaptersResult.DeletedCount, notesResult.DeletedCount)
 	}
 }
+
 
 func CreateChapterHeader() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
