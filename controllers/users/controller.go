@@ -1,4 +1,4 @@
-package controllers
+package users
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 	"github.com/programmingbunny/epub-backend/db"
 	"github.com/programmingbunny/epub-backend/models"
@@ -30,17 +31,31 @@ func GetUsers(ctx context.Context) ([]models.User, error) {
 	return users, nil
 }
 
-// GetUserByID retrieves a user by their ID from the UserCollection
-func GetUserByID(ctx context.Context, id primitive.ObjectID) (*models.User, error) {
-	var user models.User
-	err := db.UserCollection.FindOne(ctx, bson.M{"_id": id}).Decode(&user)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, errors.New("User not found")
+var validate = validator.New()
+
+// GetSingleUser gets a single user by their ID
+func GetUser() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		params := mux.Vars(r)
+		id := params["id"]
+		objId, _ := primitive.ObjectIDFromHex(id)
+		defer cancel()
+
+		// Get the user from the database
+		user, err := db.GetUserByID(ctx, objId)
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
 		}
-		return nil, err
+
+		// Send the user data back to the client
+		rw.WriteHeader(http.StatusOK)
+		response := responses.Response{Status: http.StatusOK, Message: "success", Data: map[string]interface{}{"data": user}}
+		json.NewEncoder(rw).Encode(response)
 	}
-	return &user, nil
 }
 
 // GetUserByEmail retrieves a user by their email address from the UserCollection
@@ -49,40 +64,57 @@ func GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	err := db.UserCollection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, errors.New("User not found")
+			return nil, errors.New("user not found")
 		}
 		return nil, err
 	}
 	return &user, nil
 }
 
-// CreateUser creates a new user in the UserCollection
-func CreateUser(ctx context.Context, newUser models.User) error {
-    // hash password before storing in the database
-    passwordHash, err := db.HashPassword(newUser.Password)
-    if err != nil {
-        return err
-    }
-    newUser.Password = passwordHash
+// CreateUser creates a new user in the database
+func CreateUser() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		var user models.User
+		err := json.NewDecoder(r.Body).Decode(&user)
+		if err != nil {
+			rw.WriteHeader(http.StatusBadRequest)
+			response := responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
 
-    return db.InsertUser(ctx, newUser)
+		// hash password before storing in the database
+		passwordHash, err := db.HashPassword(user.Password)
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+		user.Password = passwordHash
+
+		err = validate.Struct(user)
+		if err != nil {
+			rw.WriteHeader(http.StatusBadRequest)
+			response := responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		err = db.InsertUser(r.Context(), user)
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		rw.WriteHeader(http.StatusCreated)
+		json.NewEncoder(rw).Encode(user)
+	}
 }
 
-// UpdateUser updates an existing user in the UserCollection
-func UpdateUser(ctx context.Context, id primitive.ObjectID, updatedUser models.User) error {
-	// Update the user document
-	update := bson.M{
-		"$set": updatedUser,
-	}
-	_, err := db.UserCollection.UpdateOne(ctx, bson.M{"_id": id}, update)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// DeleteUser deletes a user by their ID from the UserCollection
-func DeleteUser() http.HandlerFunc {
+func UpdateUser() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		params := mux.Vars(r)
@@ -90,8 +122,60 @@ func DeleteUser() http.HandlerFunc {
 		objId, _ := primitive.ObjectIDFromHex(id)
 		defer cancel()
 
+		// Parse the updated user from the request body
+		var updatedUser models.User
+		err := json.NewDecoder(r.Body).Decode(&updatedUser)
+		if err != nil {
+			rw.WriteHeader(http.StatusBadRequest)
+			response := responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		// Validate the updated user
+		validate := validator.New()
+		err = validate.Struct(updatedUser)
+		if err != nil {
+			rw.WriteHeader(http.StatusBadRequest)
+			response := responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		// Update the user in the database
+		err = db.UpdateUserById(ctx, objId, updatedUser)
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		// Send a success response back to the client
+		rw.WriteHeader(http.StatusOK)
+		response := responses.Response{Status: http.StatusOK, Message: "success", Data: map[string]interface{}{"data": "User updated successfully"}}
+		json.NewEncoder(rw).Encode(response)
+	}
+}
+
+// DeleteUser deletes a user by their ID from the UserCollection
+func DeleteUser() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		params := mux.Vars(r)
+		id := params["id"]
+		objId, err := primitive.ObjectIDFromHex(id)
+		if err != nil {
+			rw.WriteHeader(http.StatusBadRequest)
+			response := responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": "Invalid ID"}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
 		// Delete the user from the database
-		err := db.DeleteUserByID(ctx, objId)
+		err = db.DeleteUserByID(ctx, objId)
 		if err != nil {
 			rw.WriteHeader(http.StatusInternalServerError)
 			response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}

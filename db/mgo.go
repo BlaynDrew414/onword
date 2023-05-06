@@ -2,13 +2,15 @@ package db
 
 import (
 	"context"
+	"errors"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/programmingbunny/epub-backend/configs"
 	"github.com/programmingbunny/epub-backend/models"
-	"golang.org/x/crypto/bcrypt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/crypto/bcrypt"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -53,6 +55,36 @@ func DeleteUserByID(ctx context.Context, id primitive.ObjectID) error {
 		return err
 	}
 	return nil
+}
+
+func UpdateUserById(ctx context.Context, id primitive.ObjectID, updatedUser models.User) error {
+	validate := validator.New()
+	err := validate.Struct(updatedUser)
+	if err != nil {
+		return err
+	}
+	// Update the user document
+	update := bson.M{
+		"$set": updatedUser,
+	}
+	_, err = UserCollection.UpdateOne(ctx, bson.M{"_id": id}, update)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetUserByID retrieves a user by their ID from the UserCollection
+func GetUserByID(ctx context.Context, id primitive.ObjectID) (*models.User, error) {
+	var user models.User
+	err := UserCollection.FindOne(ctx, bson.M{"_id": id}).Decode(&user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, errors.New("user not found")
+		}
+		return nil, err
+	}
+	return &user, nil
 }
 
 func InsertBook(ctx context.Context, newBook models.Book) (result *mongo.InsertOneResult, err error) {
