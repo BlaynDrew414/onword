@@ -189,3 +189,5 @@ func DeleteUser() http.HandlerFunc {
 		json.NewEncoder(rw).Encode(response)
 	}
 }
+
+
