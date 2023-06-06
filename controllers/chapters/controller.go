@@ -4,14 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"time"
-	"go.mongodb.org/mongo-driver/mongo"
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 	"github.com/programmingbunny/epub-backend/db"
 	"github.com/programmingbunny/epub-backend/models"
 	"github.com/programmingbunny/epub-backend/responses"
+	"net/http"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -140,23 +139,59 @@ func GetSingleChapter() http.HandlerFunc {
 	}
 }
 
-func UpdateChapterTitle(ctx context.Context, bookId string, chapterNum int, newTitle string) (*mongo.UpdateResult, error) {
-    objId, err := primitive.ObjectIDFromHex(bookId)
-    if err != nil {
-        return nil, err
-    }
+func UpdateChapter() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		params := mux.Vars(r)
+		chapterId := params["chapterId"]
+		var existingChapter models.Chapter
+		defer cancel()
 
-    filter := bson.M{"bookID": objId, "chapterNum": chapterNum}
-    update := bson.M{"$set": bson.M{"title": newTitle}}
+		objId, err := primitive.ObjectIDFromHex(chapterId)
+		if err != nil {
+			rw.WriteHeader(http.StatusBadRequest)
+			response := responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
 
-    result, err := db.ChapterCollection.UpdateOne(ctx, filter, update)
-    if err != nil {
-        return nil, err
-    }
+		err = db.ChapterCollection.FindOne(ctx, bson.M{"_id": objId}).Decode(&existingChapter)
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
 
-    return result, nil
+		// Update the existing chapter
+		var updatedChapter models.Chapter
+		err = json.NewDecoder(r.Body).Decode(&updatedChapter)
+		if err != nil {
+			rw.WriteHeader(http.StatusBadRequest)
+			response := responses.Response{Status: http.StatusBadRequest, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		existingChapter.Title = updatedChapter.Title
+		existingChapter.Text = updatedChapter.Text
+		existingChapter.ChapterNum = updatedChapter.ChapterNum
+
+		// Save the updated chapter to the database
+		_, err = db.UpdateChapterByID(ctx, objId, existingChapter)
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			response := responses.Response{Status: http.StatusInternalServerError, Message: "error", Data: map[string]interface{}{"data": err.Error()}}
+			json.NewEncoder(rw).Encode(response)
+			return
+		}
+
+		// Send a success response back to the client
+		rw.WriteHeader(http.StatusOK)
+		response := responses.Response{Status: http.StatusOK, Message: "success", Data: map[string]interface{}{"data": existingChapter}}
+		json.NewEncoder(rw).Encode(response)
+	}
 }
-
 
 func getBookNumbers(bookId primitive.ObjectID) ([]int, error) {
 	var getNumbers []int

@@ -157,11 +157,17 @@ func DeleteChapterByID(ctx context.Context, chapterID primitive.ObjectID) (*mong
     return result, nil
 }
 
-func UpdateChapterTitleByID(ctx context.Context, bookID primitive.ObjectID, chNum int, title string) (*mongo.UpdateResult, error) {
-	filter := bson.M{"bookId": bookID, "chNum": chNum}
-	update := bson.M{"$set": bson.M{
-		"title": title,
-	}}
+func UpdateChapterByID(ctx context.Context, id primitive.ObjectID, updatedChapter models.Chapter) (*mongo.UpdateResult, error) {
+	filter := bson.M{"_id": id}
+	update := bson.M{
+		"$set": bson.M{
+			"title":      updatedChapter.Title,
+			"text":       updatedChapter.Text,
+			"chapterNum": updatedChapter.ChapterNum,
+			"bookID":     updatedChapter.BookID,
+			"versionID":  updatedChapter.VersionID,
+		},
+	}
 
 	result, err := ChapterCollection.UpdateOne(ctx, filter, update)
 	if err != nil {
