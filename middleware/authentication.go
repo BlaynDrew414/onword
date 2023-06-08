@@ -8,11 +8,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const (
-	// SecretKey is the secret key used for signing JWT tokens
-	SecretKey = "your-secret-key"
-	TokenTTL  = 24 * time.Hour
-)
+type Auth struct {
+	secretKey []byte
+	tokenTTL  time.Duration
+}
 
 // Claims represents the JWT claims
 type Claims struct {
@@ -20,17 +19,31 @@ type Claims struct {
 	jwt.StandardClaims
 }
 
+// NewAuth initializes a new instance of the Auth middleware
+func NewAuth(secretKey string, tokenTTL time.Duration) (*Auth, error) {
+	// Validate and store the secret key
+	if len(secretKey) == 0 {
+		return nil, errors.New("secret key is required")
+	}
+	secretKeyBytes := []byte(secretKey)
+
+	return &Auth{
+		secretKey: secretKeyBytes,
+		tokenTTL:  tokenTTL,
+	}, nil
+}
+
 // GenerateToken generates a new JWT token for the provided user ID
-func GenerateToken(userID string) (string, error) {
+func (a *Auth) GenerateToken(userID string) (string, error) {
 	claims := &Claims{
 		UserID: userID,
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(TokenTTL).Unix(),
+			ExpiresAt: time.Now().Add(a.tokenTTL).Unix(),
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString([]byte(SecretKey))
+	signedToken, err := token.SignedString(a.secretKey)
 	if err != nil {
 		return "", err
 	}
@@ -39,9 +52,9 @@ func GenerateToken(userID string) (string, error) {
 }
 
 // VerifyToken verifies the provided JWT token and returns the user ID if the token is valid
-func VerifyToken(tokenString string) (string, error) {
+func (a *Auth) VerifyToken(tokenString string) (string, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(SecretKey), nil
+		return a.secretKey, nil
 	})
 	if err != nil {
 		return "", err
