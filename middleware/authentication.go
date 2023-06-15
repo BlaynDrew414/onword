@@ -8,7 +8,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type Auth struct {
+type Auth struct { 
 	secretKey []byte
 	tokenTTL  time.Duration
 }

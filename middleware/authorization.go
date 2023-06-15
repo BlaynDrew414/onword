@@ -44,7 +44,7 @@ func (a *Authorization) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Verify and parse the JWT token
+		// Verify and parse the JWT token 
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			return a.secretKey, nil
 		})
